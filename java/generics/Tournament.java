@@ -1,11 +1,13 @@
 import java.util.Comparator;
 import java.util.Random;
 import java.util.Arrays;
+import java.util.Stack;
 
 class Tournament<T>
 {
   Match<T> tourney;
   Comparator<T> comparator;
+  // Stack<Match<T>> stack = new Stack<Match<T>>(); required for rebuild_iterative
 
   Tournament( Comparator<T> comparator, T[] v )
   {
@@ -16,7 +18,7 @@ class Tournament<T>
   public T pop()
   {
     T result = tourney.winner;
-    tourney = tourney.isPlayer() ? null : tourney.rebuild( comparator );
+    tourney = tourney.isPlayer() ? null : tourney.rebuild_imperative( comparator );
     return result;
   }
 
@@ -56,12 +58,58 @@ class Tournament<T>
 
     public String toString()
     {
-      return isPlayer() ? "[" + winner + "]" : "(" + winner + " " + winners + " " + losers + ")";
+      return isPlayer() ? "[" + winner + "]" : "(" + losers + " " + winner + " " + winners + ")";
     }
 
-    public Match<Player> rebuild( Comparator<Player> comparator )
+    public Match<Player> rebuild_functional( Comparator<Player> comparator )
     {
-      return winners.isPlayer() ? losers : new Match<Player>( comparator, losers, winners.rebuild( comparator ) ); 
+      return winners.isPlayer() ? losers : new Match<Player>( comparator, losers, winners.rebuild_functional( comparator ) ); 
+    }
+
+    public Match<Player> rebuild_imperative( Comparator<Player> comparator )
+    {
+      if (winners.isPlayer())
+        return losers;
+      else
+      {
+        winners = winners.rebuild_imperative( comparator );
+        if (comparator.compare( losers.winner, winners.winner ) < 0)
+        {
+          winner = losers.winner;
+          Match<Player> temp = losers;
+          losers = winners;
+          winners = temp;
+        }
+        else
+          winner = winners.winner;
+        return this;
+      }
+    }
+
+    public Match<Player> rebuild_iterative( Comparator<Player> comparator, Stack<Match<Player>> stack )
+    {
+      if (winners.isPlayer()) return losers;
+      Match<Player> root = this, tourney = this;
+      while (!tourney.winners.isPlayer())
+      {
+        stack.push( tourney );
+        tourney = tourney.winners;
+      }
+      stack.peek().winners = tourney.losers;
+      while (!stack.isEmpty())
+      {
+        Match<Player> t = stack.pop();
+        if (comparator.compare( t.losers.winner, t.winners.winner ) < 0)
+        {
+          t.winner = t.losers.winner;
+          Match<Player> temp = t.losers;
+          t.losers = t.winners;
+          t.winners = temp;
+        }
+        else
+          t.winner = t.winners.winner;
+      }
+      return root;
     }
   }
   static Integer[] randomInts( int n )
