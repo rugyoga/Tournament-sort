@@ -1,5 +1,3 @@
-require 'qsort'
-
 class Match
   @@count = 0
   
@@ -26,20 +24,27 @@ def log2fact( n )
   2.upto( n ).inject( 0 ){ |sum,i| sum + log2( i ) }.ceil
 end
 
-srand( 12345678 )
-n = (ARGV.size >= 1 && ARGV[0].to_i) || 1024
-m = n*n
-test = Array.new( n ){ |i| rand( m ) }
-puts test.inspect if test.size <= 64
-start = Time.now
-sorted = Tournament.sort( test )
-elapsed = Time.now - start
-puts sorted.inspect if test.size <= 64
-puts Match::count.to_f/log2fact( n )
-puts "#{elapsed} secs"
+def mkRandom( n )
+  m = 10*n
+  srand( 12345678 )
+  Array.new( n ){ |i| rand( m ) }
+end
 
-test = Array.new( n ){ |i| rand( m ) }
-start = Time.now
-sorted = quicksort( test )
-elapsed = Time.now - start
-puts "#{elapsed} secs"
+def benchmark( description, n, &block )
+  v = mkRandom( n )
+  puts "before: " + v.inspect if v.size <= 64
+  start = Time.now
+  block.call( v )
+  elapsed = Time.now - start
+  puts "after: " + v.inspect if v.size <= 64
+  puts "#{description}: #{elapsed} secs"  
+end
+  
+n = (ARGV.size >= 1 && ARGV[0].to_i) || 1024
+benchmark( "tournament", n ) do |v|
+  Tournament.sort!( v )
+end
+benchmark( "array", n ) do |v|
+  v.sort!
+end
+puts "ratio to optimal comparisons: #{Match::count.to_f/log2fact( n ).to_f}"
